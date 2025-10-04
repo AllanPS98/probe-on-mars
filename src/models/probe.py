@@ -16,7 +16,9 @@ class Probe(BaseModel):
     mesh_id = Column(UUID(as_uuid=True), ForeignKey('meshs.id', ondelete="CASCADE"), nullable=False)
     x_position = Column(Integer, nullable=False, default=0)
     y_position = Column(Integer, nullable=False, default=0)
-    direction = Column(String, nullable=False, deafult=Direction.NORTH.value)
+    direction = Column(String, nullable=False, default=Direction.NORTH.value)
+
+    meshs = relationship("Mesh", back_populates="probes")
 
     def get(self):
         return {

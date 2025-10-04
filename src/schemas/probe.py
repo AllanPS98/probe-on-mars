@@ -1,8 +1,9 @@
 from enum import Enum
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+from loguru import logger
 
-class Instruction(Enum):
+class Movement(Enum):
     MOVE = "M"
     RIGHT = "R"
     LEFT = "L"
@@ -12,9 +13,6 @@ class ProbeResponse(BaseModel):
     x: int
     y: int
     direction: str
-
-class Movement(BaseModel):
-    instruction: Instruction
 
 class MoveProbePayload(BaseModel):
     probe_id: str

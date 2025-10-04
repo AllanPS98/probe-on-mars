@@ -11,7 +11,7 @@ class Mesh(BaseModel):
     x_limit = Column(Integer, nullable=False)
     y_limit = Column(Integer, nullable=False)
 
-    probe = relationship("Probe", back_populates="meshs", cascade="all, delete-orphan")
+    probes = relationship("Probe", back_populates="meshs", cascade="all, delete-orphan")
     
     def get(self):
         return {
