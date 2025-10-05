@@ -186,6 +186,62 @@ class TestProbeController(unittest.TestCase):
         self.assertEqual(result["direction"], "SOUTH")
     
     @patch("src.controllers.probe.Database")
+    def test_move_rotate_direction_left_two_times(self, mock_database):
+        payload = MagicMock()
+        payload.probe_id = "test_id"
+        payload.movements = [Movement.LEFT, Movement.LEFT]
+        mock_mesh = MagicMock()
+        mock_mesh.x_limit = 5
+        mock_mesh.y_limit = 5
+        mock_probe = MagicMock()
+        mock_probe.id = "test_id"
+        mock_probe.x_position = 0
+        mock_probe.y_position = 0
+        mock_probe.direction = "NORTH"
+        mock_probe.meshs = mock_mesh
+        second_mock_probe = MagicMock()
+        second_mock_probe.id = "test_id"
+        second_mock_probe.x_position = 0
+        second_mock_probe.y_position = 0
+        second_mock_probe.direction = "WEST"
+        second_mock_probe.meshs = mock_mesh
+        mock_database().probes.get_by_id.side_effect = [mock_probe, mock_probe, second_mock_probe]
+        response = ProbeController().move(payload)
+        result = json.loads(response.body)
+        self.assertEqual(result["id"], "test_id")
+        self.assertEqual(result["x"], 0)
+        self.assertEqual(result["y"], 0)
+        self.assertEqual(result["direction"], "SOUTH")
+    
+    @patch("src.controllers.probe.Database")
+    def test_move_rotate_direction_right_two_times(self, mock_database):
+        payload = MagicMock()
+        payload.probe_id = "test_id"
+        payload.movements = [Movement.RIGHT, Movement.RIGHT]
+        mock_mesh = MagicMock()
+        mock_mesh.x_limit = 5
+        mock_mesh.y_limit = 5
+        mock_probe = MagicMock()
+        mock_probe.id = "test_id"
+        mock_probe.x_position = 0
+        mock_probe.y_position = 0
+        mock_probe.direction = "NORTH"
+        mock_probe.meshs = mock_mesh
+        second_mock_probe = MagicMock()
+        second_mock_probe.id = "test_id"
+        second_mock_probe.x_position = 0
+        second_mock_probe.y_position = 0
+        second_mock_probe.direction = "EAST"
+        second_mock_probe.meshs = mock_mesh
+        mock_database().probes.get_by_id.side_effect = [mock_probe, mock_probe, second_mock_probe]
+        response = ProbeController().move(payload)
+        result = json.loads(response.body)
+        self.assertEqual(result["id"], "test_id")
+        self.assertEqual(result["x"], 0)
+        self.assertEqual(result["y"], 0)
+        self.assertEqual(result["direction"], "SOUTH")
+    
+    @patch("src.controllers.probe.Database")
     def test_move_x_out_of_limit(self, mock_database):
         payload = MagicMock()
         payload.probe_id = "test_id"

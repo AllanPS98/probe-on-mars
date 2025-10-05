@@ -26,14 +26,14 @@ class TestProbeDatabase(unittest.TestCase):
             "direction": "EAST"
         }
         mock_session_instance = MagicMock()
-        mock_session_instance.query().filter().first.return_value = mock_probe
+        mock_session_instance.query().filter().options().first.return_value = mock_probe
         mock_session.return_value.__enter__.return_value = mock_session_instance
 
         database = ProbeDatabase(mock_session.return_value)
         probe = database.get_by_id("test_id")
         result = probe.get()
 
-        mock_session_instance.query().filter().first.assert_called_once()
+        mock_session_instance.query().filter().options().first.assert_called_once()
         self.assertEqual(result["id"], "test_id_1")
         self.assertEqual(result["x"], 1)
         self.assertEqual(result["y"], 1)

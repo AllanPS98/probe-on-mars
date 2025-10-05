@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from src.models.probe import Probe
 
@@ -16,7 +16,7 @@ class ProbeDatabase:
     
     def get_by_id(self, probe_id: str) -> Optional[Probe]:
         with self.database_session as session:
-            probe = session.query(Probe).filter(Probe.id == probe_id).first()
+            probe = session.query(Probe).filter(Probe.id == probe_id).options(joinedload(Probe.meshs)).first()
             return probe
     
     def get_all(self) -> List[Probe]:

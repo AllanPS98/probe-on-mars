@@ -62,8 +62,9 @@ class ProbeController:
             return response
         try:
             mesh_instance = probe_instance.meshs
-            probe_id = probe_instance.id
+            probe_id = str(probe_instance.id)
             for movement in payload.movements:
+                probe_instance = self.__database.probes.get_by_id(payload.probe_id)
                 instruction = movement.value
                 current_x = probe_instance.x_position
                 current_y = probe_instance.y_position
@@ -84,18 +85,18 @@ class ProbeController:
                 )
                 new_positions.update(new_direction)
                 self.__database.probes.update(probe_id=probe_id, probe_data=new_positions)
-                probe_schema = ProbeResponse(
-                    id=probe_id,
-                    x=new_positions.get("x_position"),
-                    y=new_positions.get("y_position"),
-                    direction=new_positions.get("direction")
-                )
-                response = Response(
-                    content=probe_schema.model_dump_json(),
-                    media_type=configurations.MEDIA_TYPE,
-                    status_code=status.HTTP_200_OK
-                )
-                return response
+            probe_schema = ProbeResponse(
+                id=probe_id,
+                x=new_positions.get("x_position"),
+                y=new_positions.get("y_position"),
+                direction=new_positions.get("direction")
+            )
+            response = Response(
+                content=probe_schema.model_dump_json(),
+                media_type=configurations.MEDIA_TYPE,
+                status_code=status.HTTP_200_OK
+            )
+            return response
         except Exception as exception:
             logger.exception(f"Error in move probe method: {exception}")
             error_schema = ProbeResponseError(message="move probe failed")
