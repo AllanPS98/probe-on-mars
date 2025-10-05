@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from src.models.probe import Probe
@@ -13,6 +13,11 @@ class ProbeDatabase:
         with self.database_session as session:
             session.add(instance)
             session.commit()
+    
+    def get_by_id(self, probe_id: str) -> Optional[Probe]:
+        with self.database_session as session:
+            probe = session.query(Probe).filter(Probe.id == probe_id).first()
+            return probe
     
     def get_all(self) -> List[Probe]:
         with self.database_session as session:

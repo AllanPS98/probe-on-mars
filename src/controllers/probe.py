@@ -4,7 +4,7 @@ from loguru import logger
 from src.configurations import Configurations
 from src.databases.database import Database
 from src.models.probe import Probe, Direction
-from src.schemas.probe import GetProbes, MoveProbePayload, ProbeResponse, Movement
+from src.schemas.probe import GetProbes, MoveProbePayload, ProbeResponse, Movement, ProbeResponseError
 
 configurations = Configurations()
 
@@ -15,7 +15,7 @@ class ProbeController:
     def __database(self) -> Database:
         return Database()
     
-    def __direction_rules(self, movement: str, current_direction: str) -> str:
+    def __direction_rules(self, movement: str, current_direction: str) -> Dict:
         rules = {
             Movement.LEFT.value: {
                 Direction.NORTH.value: Direction.WEST.value,
@@ -30,8 +30,8 @@ class ProbeController:
                 Direction.WEST.value: Direction.NORTH.value
             }
         }
-        new_direction = rules.get(movement).get(current_direction)
-        return new_direction
+        new_direction = rules.get(movement, {}).get(current_direction, current_direction)
+        return {"direction": new_direction}
     
     def __movement_rules(self, current_x: int, current_y: int, x_limit: int, y_limit: int, current_direction: str) -> Dict:
         rules = {
@@ -40,30 +40,92 @@ class ProbeController:
             Direction.EAST.value: [current_x+1, current_y],
             Direction.WEST.value: [current_x-1, current_y]
         }
-        new_position = rules.get(current_direction)
+        new_position = rules.get(current_direction, [current_x, current_y])
         if new_position[0] < 0 or new_position[0] > x_limit:
-            return {"x": current_x, "y": current_y}
+            return {"x_position": current_x, "y_position": current_y}
         if new_position[1] < 0 or new_position[1] > y_limit:
-            return {"x": current_x, "y": current_y}
-        return {"x": new_position[0], "y": new_position[1]}
+            return {"x_position": current_x, "y_position": current_y}
+        return {"x_position": new_position[0], "y_position": new_position[1]}
     
     def move(self, payload: MoveProbePayload) -> Response:
-        pass
+        probe_instance = self.__database.probes.get_by_id(payload.probe_id)
+        if not probe_instance:
+            error_schema = ProbeResponseError(message="probe not found")
+            response = Response(
+                content=error_schema.model_dump_json(), 
+                media_type=configurations.MEDIA_TYPE,
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+            return response
+        try:
+            mesh_instance = probe_instance.meshs
+            probe_id = probe_instance.id
+            for movement in payload.movements:
+                instruction = movement.value
+                current_x = probe_instance.x_position
+                current_y = probe_instance.y_position
+                current_direction = probe_instance.direction
+                x_limit = mesh_instance.x_limit
+                y_limit = mesh_instance.y_limit
+                new_positions = self.__movement_rules(
+                    current_x=current_x,
+                    current_y=current_y,
+                    x_limit=x_limit,
+                    y_limit=y_limit,
+                    current_direction=current_direction,
+                )
+                new_direction = self.__direction_rules(
+                    movement=instruction,
+                    current_direction=current_direction
+                )
+                new_positions.update(new_direction)
+                self.__database.probes.update(probe_id=probe_id, probe_data=new_positions)
+                probe_schema = ProbeResponse(
+                    id=probe_id,
+                    x=new_positions.get("x_position"),
+                    y=new_positions.get("y_position"),
+                    direction=new_positions.get("direction")
+                )
+                response = Response(
+                    content=probe_schema.model_dump_json(),
+                    media_type=configurations.MEDIA_TYPE,
+                    status_code=status.HTTP_200_OK
+                )
+                return response
+        except Exception as exception:
+            logger.exception(f"Error in move probe method: {exception}")
+            error_schema = ProbeResponseError(message="move probe failed")
+            response = Response(
+                content=error_schema.model_dump_json(), 
+                media_type=configurations.MEDIA_TYPE,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            return response
 
     def get_all(self) -> Response:
-        probes = self.__database.probes.get_all()
-        probes_schema = []
-        for probe in probes:
-            probe_schema = ProbeResponse(**probe.get())
-            probes_schema.append(probe_schema)
+        try:
+            probes = self.__database.probes.get_all()
+            probes_schema = []
+            for probe in probes:
+                probe_schema = ProbeResponse(**probe.get())
+                probes_schema.append(probe_schema)
 
-        get_probes_schema = GetProbes(probes=probes_schema)
-        response = Response(
-            content=get_probes_schema.model_dump_json(), 
-            media_type=configurations.MEDIA_TYPE,
-            status_code=status.HTTP_200_OK
-        )
-        return response
+            get_probes_schema = GetProbes(probes=probes_schema)
+            response = Response(
+                content=get_probes_schema.model_dump_json(), 
+                media_type=configurations.MEDIA_TYPE,
+                status_code=status.HTTP_200_OK
+            )
+            return response
+        except Exception as exception:
+            logger.exception(f"Error in get all probes method: {exception}")
+            error_schema = ProbeResponseError(message="get all probes failed")
+            response = Response(
+                content=error_schema.model_dump_json(), 
+                media_type=configurations.MEDIA_TYPE,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            return response
 
     def create(self, mesh_id: str) -> Dict:
         try:
@@ -73,5 +135,5 @@ class ProbeController:
             self.__database.probes.insert(probe_instance)
             return probe_instance.get()
         except Exception as exception:
-            logger.exception(f"Error in create mesh method: {exception}")
+            logger.exception(f"Error in create probe method: {exception}")
             return {}

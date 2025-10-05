@@ -14,6 +14,9 @@ class ProbeResponse(BaseModel):
     y: int
     direction: str
 
+class ProbeResponseError(BaseModel):
+    message: str
+
 class MoveProbePayload(BaseModel):
     probe_id: str
     movements: List[Movement]
