@@ -1,0 +1,31 @@
+services:
+  probe_on_mars_application:
+    build: .
+    container_name: probe_on_mars
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      probe_on_mars_database:
+        condition: service_healthy
+    command: sh -c "alembic upgrade head && python src/main.py"
+
+  probe_on_mars_database:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
