@@ -33,14 +33,17 @@ class ProbeController:
         new_direction = rules.get(movement, {}).get(current_direction, current_direction)
         return {"direction": new_direction}
     
-    def __movement_rules(self, current_x: int, current_y: int, x_limit: int, y_limit: int, current_direction: str) -> Dict:
+    def __movement_rules(self, movement: str, current_x: int, current_y: int, x_limit: int, y_limit: int, current_direction: str) -> Dict:
         rules = {
-            Direction.NORTH.value: [current_x, current_y+1],
-            Direction.SOUTH.value: [current_x, current_y-1],
-            Direction.EAST.value: [current_x+1, current_y],
-            Direction.WEST.value: [current_x-1, current_y]
+            Movement.MOVE.value: {
+                Direction.NORTH.value: [current_x, current_y+1],
+                Direction.SOUTH.value: [current_x, current_y-1],
+                Direction.EAST.value: [current_x+1, current_y],
+                Direction.WEST.value: [current_x-1, current_y]
+            }
         }
-        new_position = rules.get(current_direction, [current_x, current_y])
+        new_var = rules.get(movement, {})
+        new_position = new_var.get(current_direction, [current_x, current_y])
         if new_position[0] < 0 or new_position[0] > x_limit:
             return {"x_position": current_x, "y_position": current_y}
         if new_position[1] < 0 or new_position[1] > y_limit:
@@ -68,6 +71,7 @@ class ProbeController:
                 x_limit = mesh_instance.x_limit
                 y_limit = mesh_instance.y_limit
                 new_positions = self.__movement_rules(
+                    movement=instruction,
                     current_x=current_x,
                     current_y=current_y,
                     x_limit=x_limit,
@@ -127,10 +131,11 @@ class ProbeController:
             )
             return response
 
-    def create(self, mesh_id: str) -> Dict:
+    def create(self, mesh_id: str, direction: str) -> Dict:
         try:
             probe_instance = Probe(
-                mesh_id=mesh_id
+                mesh_id=mesh_id,
+                direction=direction
             )
             self.__database.probes.insert(probe_instance)
             return probe_instance.get()

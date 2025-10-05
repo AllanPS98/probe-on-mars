@@ -7,11 +7,11 @@ from src.configurations import Configurations
 configurations = Configurations()
 
 def get_database_session():
-    with __get_session() as session:
+    with get_session() as session:
         return session
 
 @contextmanager
-def __get_session():
+def get_session():
     engine = create_engine(configurations.DB_STRING_URI)
     Session = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False, future=True)
     session = Session()

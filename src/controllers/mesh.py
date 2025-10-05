@@ -1,5 +1,6 @@
 from typing import Dict
 from fastapi import Response, status
+from loguru import logger
 from src.configurations import Configurations
 from src.controllers.probe import ProbeController
 from src.databases.database import Database
@@ -56,13 +57,14 @@ class MeshController:
                 y_limit=payload.y
             )
             self.__database.meshs.insert(mesh_instance)
-            probe_response = self.__probe_controller.create(mesh_instance.id)
+            probe_response = self.__probe_controller.create(mesh_instance.id, payload.direction.value)
             if not probe_response:
                 response_error = self.__creating_mesh_error(mesh_instance.id)
                 return response_error
             response = self.__creating_mesh_success(probe_response)
             return response
         except Exception as exception:
+            logger.exception(f"Error when creating mesh: {exception}")
             error_schema = CreateMeshError(
                 message="error when creating mesh"
             )
