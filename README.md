@@ -66,9 +66,13 @@ Como a parte principal é a movimentação da sonda, existem testes para mover p
 1. Inicie o servidor local:
 
 ```bash
+export PYTHONPATH=$(pwd)
 python src/main.py
 ```
-OBS: O banco precisar estar rodando, então lembre-se de rodar o container dele.
+OBS: O banco precisar estar rodando, então lembre-se de rodar o container dele. Caso ainda não tenha atualizado as migrations, use o comando:
+```bash
+alembic upgrade head
+```
 
 ## 🛠️ Contribuindo
 

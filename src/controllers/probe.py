@@ -3,6 +3,7 @@ from fastapi import Response, status
 from loguru import logger
 from src.configurations import Configurations
 from src.databases.database import Database
+from src.models.mesh import Mesh
 from src.models.probe import Probe, Direction
 from src.schemas.probe import GetProbes, MoveProbePayload, ProbeResponse, Movement, ProbeResponseError
 
@@ -49,42 +50,50 @@ class ProbeController:
         if new_position[1] < 0 or new_position[1] > y_limit:
             return {"x_position": current_x, "y_position": current_y}
         return {"x_position": new_position[0], "y_position": new_position[1]}
+
+    def __not_found_probe(self, payload: MoveProbePayload) -> Response:
+        logger.error(f"Probe instance with id: {payload.probe_id} not found")
+        error_schema = ProbeResponseError(message="probe not found")
+        response = Response(
+            content=error_schema.model_dump_json(), 
+            media_type=configurations.MEDIA_TYPE,
+            status_code=status.HTTP_404_NOT_FOUND
+        )
+        return response
+
+    def __execute_movements(self, payload: MoveProbePayload, mesh_instance: Mesh, probe_id: str):
+        for movement in payload.movements:
+            probe_instance = self.__database.probes.get_by_id(payload.probe_id)
+            instruction = movement.value
+            current_x = probe_instance.x_position
+            current_y = probe_instance.y_position
+            current_direction = probe_instance.direction
+            x_limit = mesh_instance.x_limit
+            y_limit = mesh_instance.y_limit
+            new_positions = self.__movement_rules(
+                movement=instruction,
+                current_x=current_x,
+                current_y=current_y,
+                x_limit=x_limit,
+                y_limit=y_limit,
+                current_direction=current_direction,
+            )
+            new_direction = self.__direction_rules(
+                movement=instruction,
+                current_direction=current_direction
+            )
+            new_positions.update(new_direction)
+            self.__database.probes.update(probe_id=probe_id, probe_data=new_positions)
+        return new_positions
     
     def move(self, payload: MoveProbePayload) -> Response:
         probe_instance = self.__database.probes.get_by_id(payload.probe_id)
         if not probe_instance:
-            error_schema = ProbeResponseError(message="probe not found")
-            response = Response(
-                content=error_schema.model_dump_json(), 
-                media_type=configurations.MEDIA_TYPE,
-                status_code=status.HTTP_404_NOT_FOUND
-            )
-            return response
+            return self.__not_found_probe(payload)
         try:
             mesh_instance = probe_instance.meshs
             probe_id = str(probe_instance.id)
-            for movement in payload.movements:
-                probe_instance = self.__database.probes.get_by_id(payload.probe_id)
-                instruction = movement.value
-                current_x = probe_instance.x_position
-                current_y = probe_instance.y_position
-                current_direction = probe_instance.direction
-                x_limit = mesh_instance.x_limit
-                y_limit = mesh_instance.y_limit
-                new_positions = self.__movement_rules(
-                    movement=instruction,
-                    current_x=current_x,
-                    current_y=current_y,
-                    x_limit=x_limit,
-                    y_limit=y_limit,
-                    current_direction=current_direction,
-                )
-                new_direction = self.__direction_rules(
-                    movement=instruction,
-                    current_direction=current_direction
-                )
-                new_positions.update(new_direction)
-                self.__database.probes.update(probe_id=probe_id, probe_data=new_positions)
+            new_positions = self.__execute_movements(payload, mesh_instance, probe_id)
             probe_schema = ProbeResponse(
                 id=probe_id,
                 x=new_positions.get("x_position"),
